@@ -45,17 +45,21 @@ func (env *IngestHandler) HandleTriggerIngest(w http.ResponseWriter, r *http.Req
 
 	ctx := r.Context()
 
-	logEntry, err := env.IngestRepo.StartIngestion(ctx, req.SourceURL)
-	if err != nil {
-		http.Error(w, "Failed to initialize ingestion log", http.StatusInternalServerError)
-		return
-	}
+	logEntry, err := env.IngestRepo.GetIngestionLog(ctx, req.SourceURL)
 
 	log.Info("log entry is: ", "entry", logEntry)
 
 	if logEntry.Status == "SUCCESS" {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Data from this URL has already been successfully ingested."))
+		return
+	}
+	
+	
+	
+	logEntry, err = env.IngestRepo.StartIngestion(ctx, req.SourceURL)
+	if err != nil {
+		http.Error(w, "Failed to initialize ingestion log", http.StatusInternalServerError)
 		return
 	}
 
@@ -117,6 +121,11 @@ func (env *IngestHandler) HandleTriggerIngest(w http.ResponseWriter, r *http.Req
 			return
 		}
 	}
+	log.Info("logically the status need to be updated")
+	env.IngestRepo.UpdateIngestionStatus(ctx, sqlc.UpdateIngestionStatusParams{
+		SourceUrl: req.SourceURL,
+		Status:    "SUCCESS",
+	})
 
 	// 6. Success response
 	w.WriteHeader(http.StatusOK)
